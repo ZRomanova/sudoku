@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,6 +48,14 @@ fun HomeScreen(
             Text("Судоку из регионов", style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(48.dp))
 
+            Text(
+                "ИГРАТЬ",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+
             if (hasActivePuzzle) {
                 Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
                     Text("Продолжить")
@@ -61,15 +71,19 @@ fun HomeScreen(
                 Text(if (isStartingRandom) "Готовим игру..." else "Случайная игра")
             }
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onConstructor, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = onLibrary, modifier = Modifier.fillMaxWidth()) {
+                Text("Играть по раскраске")
+            }
+
+            Spacer(Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(24.dp))
+
+            OutlinedButton(onClick = onConstructor, modifier = Modifier.fillMaxWidth()) {
                 Text("Конструктор регионов")
             }
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onLibrary, modifier = Modifier.fillMaxWidth()) {
-                Text("Мои раскраски")
-            }
-            Spacer(Modifier.height(16.dp))
-            Button(onClick = onStats, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = onStats, modifier = Modifier.fillMaxWidth()) {
                 Text("Статистика")
             }
         }
