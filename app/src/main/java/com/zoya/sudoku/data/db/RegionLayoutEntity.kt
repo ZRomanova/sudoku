@@ -30,6 +30,12 @@ interface RegionLayoutDao {
     @Query("SELECT COUNT(*) FROM region_layouts")
     suspend fun count(): Int
 
+    @Query("SELECT id FROM region_layouts")
+    suspend fun getAllIds(): List<Long>
+
+    @Query("UPDATE region_layouts SET name = :name WHERE id = :id")
+    suspend fun rename(id: Long, name: String)
+
     @Query("DELETE FROM region_layouts WHERE id = :id")
     suspend fun delete(id: Long)
 }

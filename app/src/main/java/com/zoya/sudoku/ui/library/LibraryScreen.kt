@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,11 +31,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.zoya.sudoku.data.repository.SavedLayout
 import com.zoya.sudoku.engine.Difficulty
+import com.zoya.sudoku.ui.capitalizeFirst
+import com.zoya.sudoku.ui.components.DifficultyDialog
+import com.zoya.sudoku.ui.components.RegionThumbnail
 import com.zoya.sudoku.ui.components.ScreenHeader
-import com.zoya.sudoku.ui.displayName
 
 @Composable
 fun LibraryScreen(viewModel: LibraryViewModel, onPlay: () -> Unit, onHome: () -> Unit) {
@@ -62,6 +67,7 @@ fun LibraryScreen(viewModel: LibraryViewModel, onPlay: () -> Unit, onHome: () ->
                             saved = saved,
                             isGenerating = generatingLayoutId == saved.id,
                             onPlay = { difficulty -> viewModel.play(saved.id, difficulty, onPlay) },
+                            onRename = { name -> viewModel.rename(saved.id, name) },
                             onDelete = { viewModel.delete(saved.id) }
                         )
                     }
@@ -76,10 +82,13 @@ private fun LayoutRow(
     saved: SavedLayout,
     isGenerating: Boolean,
     onPlay: (Difficulty) -> Unit,
+    onRename: (String) -> Unit,
     onDelete: () -> Unit
 ) {
     var showPlayDialog by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
     var confirmingDelete by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
@@ -94,19 +103,44 @@ private fun LayoutRow(
         Text(
             saved.name,
             style = MaterialTheme.typography.titleMedium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
-        IconButton(onClick = { confirmingDelete = true }, enabled = !isGenerating) {
-            Text("✕", style = MaterialTheme.typography.titleLarge)
+        Box {
+            IconButton(onClick = { menuExpanded = true }, enabled = !isGenerating) {
+                Text("⋮", style = MaterialTheme.typography.titleLarge)
+            }
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text("Переименовать") },
+                    onClick = { menuExpanded = false; renaming = true }
+                )
+                DropdownMenuItem(
+                    text = { Text("Удалить") },
+                    onClick = { menuExpanded = false; confirmingDelete = true }
+                )
+            }
         }
     }
 
     if (showPlayDialog) {
-        PlayDialog(
+        DifficultyDialog(
             onDismiss = { showPlayDialog = false },
             onStart = { difficulty ->
                 showPlayDialog = false
                 onPlay(difficulty)
+            }
+        )
+    }
+
+    if (renaming) {
+        RenameDialog(
+            currentName = saved.name,
+            onDismiss = { renaming = false },
+            onConfirm = { name ->
+                renaming = false
+                onRename(name)
             }
         )
     }
@@ -127,27 +161,25 @@ private fun LayoutRow(
 }
 
 @Composable
-private fun PlayDialog(onDismiss: () -> Unit, onStart: (Difficulty) -> Unit) {
-    var selected by remember { mutableStateOf(Difficulty.MEDIUM) }
+private fun RenameDialog(currentName: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var name by remember { mutableStateOf(currentName) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Сложность") },
+        title = { Text("Переименовать") },
         text = {
-            Column {
-                for (difficulty in Difficulty.entries) {
-                    FilterChip(
-                        selected = selected == difficulty,
-                        onClick = { selected = difficulty },
-                        label = { Text(difficulty.displayName()) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                    )
-                }
-            }
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it.capitalizeFirst() },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
         },
-        confirmButton = { TextButton(onClick = { onStart(selected) }) { Text("Старт") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
+        confirmButton = {
+            TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) { Text("Сохранить") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Отмена") }
+        }
     )
 }

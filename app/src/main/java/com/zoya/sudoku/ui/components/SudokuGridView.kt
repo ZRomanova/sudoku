@@ -25,6 +25,7 @@ import com.zoya.sudoku.engine.BOARD_SIZE
 import com.zoya.sudoku.engine.GRID_DIM
 import com.zoya.sudoku.engine.colOf
 import com.zoya.sudoku.engine.rowOf
+import com.zoya.sudoku.ui.theme.BlockedCellOverlay
 import com.zoya.sudoku.ui.theme.CellSelectedOverlay
 import com.zoya.sudoku.ui.theme.GridLineColor
 import com.zoya.sudoku.ui.theme.RegionColors
@@ -46,6 +47,7 @@ fun SudokuGridView(
     selectedCell: Int? = null,
     onCellTap: ((Int) -> Unit)? = null,
     dragPaint: Boolean = false,
+    blockedCells: Set<Int> = emptySet(),
     cellContent: (@Composable BoxScope.(cell: Int) -> Unit)? = null
 ) {
     BoxWithConstraints(modifier = modifier.aspectRatio(1f)) {
@@ -67,13 +69,22 @@ fun SudokuGridView(
                             }
                             awaitEachGesture {
                                 val down = awaitFirstDown()
-                                onCellTap(cellAt(down.position))
+                                var lastCell = cellAt(down.position)
+                                onCellTap(lastCell)
                                 down.consume()
                                 while (true) {
                                     val event = awaitPointerEvent()
                                     val change = event.changes.firstOrNull() ?: break
                                     if (!change.pressed) break
-                                    onCellTap(cellAt(change.position))
+                                    // Only fire on entering a new cell - the finger settling or
+                                    // lifting keeps generating move events over the same cell, and
+                                    // re-tapping it would repaint it with whatever color/tool the
+                                    // first tap advanced to (e.g. once a color hits 9/9 mid-drag).
+                                    val cell = cellAt(change.position)
+                                    if (cell != lastCell) {
+                                        onCellTap(cell)
+                                        lastCell = cell
+                                    }
                                     change.consume()
                                 }
                             }
@@ -100,6 +111,13 @@ fun SudokuGridView(
                 if (selectedCell == cell) {
                     drawRect(
                         color = CellSelectedOverlay,
+                        topLeft = Offset(c * cellPx, r * cellPx),
+                        size = Size(cellPx, cellPx)
+                    )
+                }
+                if (cell in blockedCells) {
+                    drawRect(
+                        color = BlockedCellOverlay,
                         topLeft = Offset(c * cellPx, r * cellPx),
                         size = Size(cellPx, cellPx)
                     )

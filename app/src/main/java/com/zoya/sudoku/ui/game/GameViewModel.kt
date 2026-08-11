@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.zoya.sudoku.data.decodeDigits
 import com.zoya.sudoku.data.repository.PuzzleRepository
 import com.zoya.sudoku.data.repository.RegionLayoutRepository
+import com.zoya.sudoku.data.repository.StatsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +15,8 @@ import kotlinx.coroutines.launch
 
 class GameViewModel(
     private val puzzleRepository: PuzzleRepository,
-    layoutRepository: RegionLayoutRepository
+    layoutRepository: RegionLayoutRepository,
+    private val statsRepository: StatsRepository
 ) : ViewModel() {
 
     private val _selectedCell = MutableStateFlow<Int?>(null)
@@ -31,6 +33,8 @@ class GameViewModel(
             GameUiState.Loading
         } else {
             GameUiState.Loaded(
+                layoutId = entity.layoutId,
+                difficulty = entity.difficulty,
                 cellRegion = layout.cellRegion,
                 board = entity.board.decodeDigits(),
                 solution = entity.solution.decodeDigits(),
@@ -59,8 +63,12 @@ class GameViewModel(
         _showErrors.value = !_showErrors.value
     }
 
+    /** Only reachable from a full board (see GameScreen), so this is always a real finish - never
+     *  called for a puzzle the player merely navigated away from. */
     fun finish(onFinished: () -> Unit) {
+        val current = uiState.value as? GameUiState.Loaded ?: return
         viewModelScope.launch {
+            statsRepository.recordResult(current.layoutId, current.difficulty, current.isCorrect)
             puzzleRepository.finishCurrent()
             onFinished()
         }

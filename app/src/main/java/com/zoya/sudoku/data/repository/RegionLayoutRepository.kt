@@ -30,6 +30,8 @@ class RegionLayoutRepository(private val dao: RegionLayoutDao) {
 
     suspend fun getById(id: Long): SavedLayout? = dao.getById(id)?.toDomain()
 
+    suspend fun rename(id: Long, name: String) = dao.rename(id, name)
+
     suspend fun delete(id: Long) = dao.delete(id)
 
     /** Used to suggest the next "Раскладка #N" default name in the Constructor. */
@@ -40,6 +42,15 @@ class RegionLayoutRepository(private val dao: RegionLayoutDao) {
         if (dao.count() == 0) {
             save(RegionLayout.classicBoxes(), "Классическое судоку")
         }
+    }
+
+    /**
+     * Picks a random saved layout for "Случайная игра". Re-seeds the classic layout first if the
+     * user deleted every saved layout, so this always has something to return.
+     */
+    suspend fun randomLayoutId(): Long {
+        ensureDefaultLayoutExists()
+        return dao.getAllIds().random()
     }
 
     private fun RegionLayoutEntity.toDomain() = SavedLayout(

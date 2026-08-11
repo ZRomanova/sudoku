@@ -64,3 +64,25 @@ fun RegionLayout.isSolvable(): Boolean {
         false
     }
 }
+
+/**
+ * Live paint-time check for the Constructor: would painting [cell] with [color] still leave a
+ * valid Sudoku reachable? [cellColors] may be partial (unpainted cells hold any value outside
+ * 0..8, e.g. -1), so this only enforces what's already decided - rows, columns, and same-color
+ * cells so far must be pairwise distinct - and doesn't require any region to already be full.
+ * Building [Units] from a [RegionLayout] over the still-partial array works because an unpainted
+ * cell never equals a real region id 0..8, so it simply isn't part of any region unit yet.
+ *
+ * A "false" here is a hard proof this exact paint is a dead end. A "true" is not a promise the
+ * *finished* layout will solve - later paints can still box the puzzle in - so [isSolvable] on
+ * Save remains the authoritative check; this is only meant to catch the obvious mistakes early.
+ */
+fun wouldRemainFeasible(cellColors: List<Int>, cell: Int, color: Int, nodeLimit: Int = 50_000): Boolean {
+    val trial = IntArray(BOARD_SIZE) { i -> if (i == cell) color else cellColors[i] }
+    val units = Units(RegionLayout(trial))
+    return try {
+        SudokuSolver(units, nodeLimit = nodeLimit).solve(IntArray(BOARD_SIZE)) != null
+    } catch (e: SolverBudgetExceeded) {
+        true
+    }
+}

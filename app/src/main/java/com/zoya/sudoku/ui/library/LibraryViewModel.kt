@@ -6,6 +6,7 @@ import com.zoya.sudoku.data.repository.PuzzleRepository
 import com.zoya.sudoku.data.repository.RegionLayoutRepository
 import com.zoya.sudoku.data.repository.SavedLayout
 import com.zoya.sudoku.engine.Difficulty
+import com.zoya.sudoku.ui.capitalizeFirst
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,6 +35,12 @@ class LibraryViewModel(
             _generatingLayoutId.value = null
             onReady()
         }
+    }
+
+    fun rename(layoutId: Long, name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch { layoutRepository.rename(layoutId, trimmed.capitalizeFirst()) }
     }
 
     fun delete(layoutId: Long) {

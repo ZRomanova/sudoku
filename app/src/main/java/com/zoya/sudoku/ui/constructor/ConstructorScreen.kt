@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -24,7 +25,7 @@ import com.zoya.sudoku.ui.components.ScreenHeader
 import com.zoya.sudoku.ui.components.SudokuGridView
 
 @Composable
-fun ConstructorScreen(viewModel: ConstructorViewModel, onSaved: () -> Unit, onHome: () -> Unit) {
+fun ConstructorScreen(viewModel: ConstructorViewModel, onSaved: () -> Unit, onHome: () -> Unit, onTips: () -> Unit) {
     val state by viewModel.uiState.collectAsState()
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -34,13 +35,18 @@ fun ConstructorScreen(viewModel: ConstructorViewModel, onSaved: () -> Unit, onHo
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            ScreenHeader("Конструктор регионов", onHome)
+            ScreenHeader("Конструктор", onHome) {
+                IconButton(onClick = onTips) {
+                    Text("?", style = MaterialTheme.typography.titleLarge)
+                }
+            }
             Spacer(Modifier.height(12.dp))
 
             SudokuGridView(
                 cellRegion = { cell -> state.cellColors[cell] },
                 onCellTap = viewModel::tapCell,
                 dragPaint = true,
+                blockedCells = state.blockedCells,
                 modifier = Modifier.fillMaxWidth()
             )
 

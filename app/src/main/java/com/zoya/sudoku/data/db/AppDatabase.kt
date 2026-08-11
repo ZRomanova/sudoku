@@ -7,14 +7,15 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
 @Database(
-    entities = [RegionLayoutEntity::class, PuzzleStateEntity::class],
-    version = 2,
+    entities = [RegionLayoutEntity::class, PuzzleStateEntity::class, GameResultEntity::class],
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun regionLayoutDao(): RegionLayoutDao
     abstract fun puzzleStateDao(): PuzzleStateDao
+    abstract fun gameResultDao(): GameResultDao
 
     companion object {
         @Volatile
@@ -27,8 +28,10 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "sudoku.db"
                 )
-                    // Personal, pre-release app with no real user data to preserve across schema
-                    // changes - simplest to reset rather than hand-write migrations.
+                    // The player's saved layouts are real data worth keeping, so version bumps
+                    // that matter get a hand-written migration; anything else still falls back to
+                    // a destructive reset rather than blocking on a migration nobody wrote.
+                    .addMigrations(MIGRATION_2_3)
                     .fallbackToDestructiveMigration()
                     .build().also { instance = it }
             }

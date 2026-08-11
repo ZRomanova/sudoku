@@ -19,6 +19,9 @@ val AppBackground = Color(0xFFF4F1EC)
 val GridLineColor = Color(0xFF2B2B2B)
 val CellSelectedOverlay = Color(0x33000000)
 
+/** Tint for a cell the Constructor has proven can't take the active color without dooming the layout. */
+val BlockedCellOverlay = Color(0x4DD1495B)
+
 /** Used only for the on-demand, post-completion error check - not part of normal play styling. */
 val ErrorDigitColor = Color(0xFFD1495B)
 
