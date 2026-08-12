@@ -101,7 +101,7 @@ class ConstructorViewModel(private val repository: RegionLayoutRepository) : Vie
                 _uiState.update {
                     it.copy(
                         isSaving = false,
-                        errorMessage = "На такой раскраске нельзя построить корректное судоку. Измените форму регионов и попробуйте снова."
+                        errorMessage = "На такой раскладке нельзя построить корректное судоку. Измените форму регионов и попробуйте снова."
                     )
                 }
                 return@launch

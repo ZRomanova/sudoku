@@ -41,7 +41,7 @@ import com.zoya.sudoku.ui.components.RegionThumbnail
 import com.zoya.sudoku.ui.components.ScreenHeader
 
 @Composable
-fun LibraryScreen(viewModel: LibraryViewModel, onPlay: () -> Unit, onHome: () -> Unit) {
+fun LibraryScreen(viewModel: LibraryViewModel, onPlay: (Long) -> Unit, onHome: () -> Unit) {
     val layouts by viewModel.layouts.collectAsState()
     val generatingLayoutId by viewModel.generatingLayoutId.collectAsState()
 
@@ -51,12 +51,12 @@ fun LibraryScreen(viewModel: LibraryViewModel, onPlay: () -> Unit, onHome: () ->
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            ScreenHeader("Мои раскраски", onHome)
+            ScreenHeader("Мои раскладки", onHome)
 
             if (layouts.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        "Пока нет сохранённых раскрасок.\nСоздайте одну в конструкторе.",
+                        "Пока нет сохранённых раскладок.\nСоздайте одну в конструкторе.",
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -154,7 +154,7 @@ private fun LayoutRow(
             dismissButton = {
                 TextButton(onClick = { confirmingDelete = false }) { Text("Отмена") }
             },
-            title = { Text("Удалить раскраску?") },
+            title = { Text("Удалить раскладку?") },
             text = { Text("«${saved.name}» будет удалена без возможности восстановления.") }
         )
     }

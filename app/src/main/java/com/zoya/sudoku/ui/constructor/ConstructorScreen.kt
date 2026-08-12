@@ -61,7 +61,7 @@ fun ConstructorScreen(viewModel: ConstructorViewModel, onSaved: () -> Unit, onHo
             OutlinedTextField(
                 value = state.name,
                 onValueChange = viewModel::setName,
-                label = { Text("Название раскраски") },
+                label = { Text("Название раскладки") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )

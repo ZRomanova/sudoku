@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 
 @Database(
     entities = [RegionLayoutEntity::class, PuzzleStateEntity::class, GameResultEntity::class],
-    version = 3,
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -31,7 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
                     // The player's saved layouts are real data worth keeping, so version bumps
                     // that matter get a hand-written migration; anything else still falls back to
                     // a destructive reset rather than blocking on a migration nobody wrote.
-                    .addMigrations(MIGRATION_2_3)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .fallbackToDestructiveMigration()
                     .build().also { instance = it }
             }

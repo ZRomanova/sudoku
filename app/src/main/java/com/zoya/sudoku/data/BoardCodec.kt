@@ -4,3 +4,11 @@ package com.zoya.sudoku.data
 fun IntArray.encodeDigits(): String = joinToString("") { it.toString() }
 
 fun String.decodeDigits(): IntArray = IntArray(length) { i -> this[i] - '0' }
+
+/** An empty pencil-marks board: 81 cells, each an empty bitmask. */
+fun emptyNoteMasks(): IntArray = IntArray(81)
+
+/** Encodes 81 per-cell candidate bitmasks (bit N-1 set = digit N is marked) as a comma-joined string. */
+fun IntArray.encodeNoteMasks(): String = joinToString(",")
+
+fun String.decodeNoteMasks(): IntArray = split(",").map { it.toInt() }.toIntArray()

@@ -3,19 +3,21 @@ package com.zoya.sudoku.data.db
 import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
+import androidx.room.Update
 import com.zoya.sudoku.engine.Difficulty
 import kotlinx.coroutines.flow.Flow
 
 /**
- * The single resumable puzzle - "opening the app always drops you back where you left off" means
- * there is only ever one in-progress game, not a history of them. A fresh "Play" tap overwrites it.
+ * A resumable puzzle. Several can exist for the same [layoutId] at once (e.g. two separate
+ * "Случайная игра" runs that happened to land on the same раскладка) - each keeps its own
+ * progress, distinguished by [updatedAt] in the "Продолжить" list. Nothing is ever silently
+ * overwritten by starting a new game.
  */
 @Entity(tableName = "puzzle_state")
 data class PuzzleStateEntity(
-    @PrimaryKey val id: Long = 1,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val layoutId: Long,
     /** 81 chars, the full solution (kept for a possible future subtle completion cue). */
     val solution: String,
@@ -23,20 +25,29 @@ data class PuzzleStateEntity(
     val givens: String,
     /** 81 chars, live board state = givens overlaid with the player's entries. */
     val board: String,
-    val difficulty: Difficulty
+    /** 81 comma-joined bitmasks, one per cell - bit (digit-1) set means that digit is pencilled in. */
+    val notes: String,
+    val difficulty: Difficulty,
+    val updatedAt: Long
 )
 
 @Dao
 interface PuzzleStateDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(state: PuzzleStateEntity)
+    @Insert
+    suspend fun insert(state: PuzzleStateEntity): Long
 
-    @Query("SELECT * FROM puzzle_state WHERE id = 1")
-    fun getCurrent(): Flow<PuzzleStateEntity?>
+    @Update
+    suspend fun update(state: PuzzleStateEntity)
 
-    @Query("SELECT * FROM puzzle_state WHERE id = 1")
-    suspend fun getCurrentOnce(): PuzzleStateEntity?
+    @Query("SELECT * FROM puzzle_state WHERE id = :id")
+    fun observe(id: Long): Flow<PuzzleStateEntity?>
 
-    @Query("DELETE FROM puzzle_state WHERE id = 1")
-    suspend fun clear()
+    @Query("SELECT * FROM puzzle_state WHERE id = :id")
+    suspend fun getOnce(id: Long): PuzzleStateEntity?
+
+    @Query("SELECT * FROM puzzle_state ORDER BY updatedAt DESC")
+    fun observeAll(): Flow<List<PuzzleStateEntity>>
+
+    @Query("DELETE FROM puzzle_state WHERE id = :id")
+    suspend fun delete(id: Long)
 }

@@ -26,14 +26,15 @@ class LibraryViewModel(
     private val _generatingLayoutId = MutableStateFlow<Long?>(null)
     val generatingLayoutId: StateFlow<Long?> = _generatingLayoutId
 
-    /** Difficulty is chosen right here, right before generation - never baked into the layout. */
-    fun play(layoutId: Long, difficulty: Difficulty, onReady: () -> Unit) {
+    /** Difficulty is chosen right here, right before generation - never baked into the layout.
+     *  Always starts a new puzzle, even if this layout already has one in progress. */
+    fun play(layoutId: Long, difficulty: Difficulty, onReady: (Long) -> Unit) {
         if (_generatingLayoutId.value != null) return
         viewModelScope.launch {
             _generatingLayoutId.value = layoutId
-            withContext(Dispatchers.Default) { puzzleRepository.generateAndStartNew(layoutId, difficulty) }
+            val puzzleId = withContext(Dispatchers.Default) { puzzleRepository.generateAndStartNew(layoutId, difficulty) }
             _generatingLayoutId.value = null
-            onReady()
+            onReady(puzzleId)
         }
     }
 
