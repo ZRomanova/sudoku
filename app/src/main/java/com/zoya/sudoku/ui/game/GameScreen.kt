@@ -17,12 +17,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.zoya.sudoku.ui.components.DigitPad
@@ -37,6 +39,14 @@ import com.zoya.sudoku.ui.theme.contrastingDigitColor
 fun GameScreen(viewModel: GameViewModel, onHome: () -> Unit) {
     val state by viewModel.uiState.collectAsState()
     var confirmingReset by remember { mutableStateOf(false) }
+
+    // Solving a puzzle often means staring at the board without touching the screen - don't let
+    // the system's screen-off timer cut that thinking time short while this screen is open.
+    val view = LocalView.current
+    DisposableEffect(Unit) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
