@@ -46,7 +46,7 @@ fun ConstructorScreen(viewModel: ConstructorViewModel, onSaved: () -> Unit, onHo
                 cellRegion = { cell -> state.cellColors[cell] },
                 onCellTap = viewModel::tapCell,
                 dragPaint = true,
-                blockedCells = state.blockedCells,
+                blockedCells = state.hintedCells,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -83,7 +83,7 @@ fun ConstructorScreen(viewModel: ConstructorViewModel, onSaved: () -> Unit, onHo
             confirmButton = {
                 Button(onClick = viewModel::dismissError) { Text("Понятно") }
             },
-            title = { Text("Раскраска не подходит") },
+            title = { Text("Ход невозможен") },
             text = { Text(state.errorMessage!!) }
         )
     }

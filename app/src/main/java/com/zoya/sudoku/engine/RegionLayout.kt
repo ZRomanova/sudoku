@@ -86,3 +86,22 @@ fun wouldRemainFeasible(cellColors: List<Int>, cell: Int, color: Int, nodeLimit:
         true
     }
 }
+
+/**
+ * On-demand replacement for the Constructor's "the cached witness conflicts here" path: given the
+ * current partial [cellColors] with [cell] now set to [color], searches for ANY full valid Sudoku
+ * grid consistent with what's decided so far (same partial-[Units] trick as [wouldRemainFeasible]
+ * - unpainted cells aren't part of any region unit yet). Unlike [wouldRemainFeasible]'s "prove no
+ * solution exists" direction, this is "find a solution", which exits on first success and is fast
+ * for realistic (non-adversarial) partial layouts - so hitting the node budget here is a real
+ * failure signal, not something to optimistically wave through.
+ */
+fun regenerateWitness(cellColors: List<Int>, cell: Int, color: Int, nodeLimit: Int = 500_000): IntArray? {
+    val trial = IntArray(BOARD_SIZE) { i -> if (i == cell) color else cellColors[i] }
+    val units = Units(RegionLayout(trial))
+    return try {
+        SudokuSolver(units, nodeLimit = nodeLimit).solve(IntArray(BOARD_SIZE), randomize = true)
+    } catch (e: SolverBudgetExceeded) {
+        null
+    }
+}
