@@ -9,3 +9,6 @@ build/
 .cxx
 local.properties
 app/schemas/
+keystore.properties
+*.jks
+*.keystore
