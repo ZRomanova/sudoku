@@ -6,6 +6,7 @@ import com.zoya.sudoku.data.repository.InProgressPuzzle
 import com.zoya.sudoku.data.repository.PuzzleRepository
 import com.zoya.sudoku.data.repository.RegionLayoutRepository
 import com.zoya.sudoku.engine.Difficulty
+import com.zoya.sudoku.engine.PuzzleGenerationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,6 +27,13 @@ class HomeViewModel(
     private val _isStartingRandom = MutableStateFlow(false)
     val isStartingRandom: StateFlow<Boolean> = _isStartingRandom
 
+    private val _generationFailed = MutableStateFlow(false)
+    val generationFailed: StateFlow<Boolean> = _generationFailed
+
+    fun dismissGenerationFailed() {
+        _generationFailed.value = false
+    }
+
     /**
      * Picks a random saved layout and starts a fresh puzzle on it at [difficulty] - always a new
      * puzzle, never overwriting a run already in progress on that layout. Always has something to
@@ -36,12 +44,18 @@ class HomeViewModel(
         if (_isStartingRandom.value) return
         viewModelScope.launch {
             _isStartingRandom.value = true
-            val puzzleId = withContext(Dispatchers.Default) {
-                val layoutId = regionLayoutRepository.randomLayoutId()
-                puzzleRepository.generateAndStartNew(layoutId, difficulty)
+            val puzzleId = try {
+                withContext(Dispatchers.Default) {
+                    val layoutId = regionLayoutRepository.randomLayoutId()
+                    puzzleRepository.generateAndStartNew(layoutId, difficulty)
+                }
+            } catch (e: PuzzleGenerationException) {
+                _generationFailed.value = true
+                null
+            } finally {
+                _isStartingRandom.value = false
             }
-            _isStartingRandom.value = false
-            onReady(puzzleId)
+            puzzleId?.let(onReady)
         }
     }
 }

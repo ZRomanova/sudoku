@@ -77,3 +77,10 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         db.execSQL("ALTER TABLE `puzzle_state_new` RENAME TO `puzzle_state`")
     }
 }
+
+/** Adds [PuzzleStateEntity.attemptFailed]; every in-progress game carries over with it unset. */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `puzzle_state` ADD COLUMN `attemptFailed` INTEGER NOT NULL DEFAULT 0")
+    }
+}

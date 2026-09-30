@@ -76,6 +76,11 @@ class PuzzleRepository(
         )
     }
 
+    /** Records that a wrong board was submitted - the loss is logged once, the game stays playable. */
+    suspend fun markAttemptFailed(id: Long) {
+        puzzleDao.markAttemptFailed(id)
+    }
+
     /** Ends a puzzle for good, whether finished or abandoned (no history is kept). */
     suspend fun finishCurrent(id: Long) {
         puzzleDao.delete(id)

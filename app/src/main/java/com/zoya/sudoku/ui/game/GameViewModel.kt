@@ -29,7 +29,17 @@ class GameViewModel(
     private val _showErrors = MutableStateFlow(false)
     private val _notesMode = MutableStateFlow(false)
 
-    val uiState: StateFlow<GameUiState> = combine(
+    /** Frozen final board once solved correctly - the DB row is deleted at that point, so the
+     *  "Решено верно" view can't come from the live puzzle flow anymore. */
+    private val _solvedSnapshot = MutableStateFlow<GameUiState.Loaded?>(null)
+
+    /** Non-null while the "Есть ошибки" dialog is up: how many cells are wrong. */
+    private val _mistakeCount = MutableStateFlow<Int?>(null)
+    val mistakeCount: StateFlow<Int?> = _mistakeCount
+
+    private var finishing = false
+
+    private val liveState = combine(
         puzzleRepository.observe(puzzleId),
         layoutRepository.getAll(),
         _selectedCell,
@@ -52,10 +62,14 @@ class GameViewModel(
                 notes = entity.notes.decodeNoteMasks(),
                 notesMode = notesMode,
                 selectedCell = selected,
-                showErrors = showErrors
+                showErrors = showErrors,
+                attemptFailed = entity.attemptFailed
             )
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GameUiState.Loading)
+    }
+
+    val uiState: StateFlow<GameUiState> = combine(liveState, _solvedSnapshot) { live, solved -> solved ?: live }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GameUiState.Loading)
 
     fun selectCell(cell: Int) {
         _selectedCell.value = cell
@@ -100,14 +114,49 @@ class GameViewModel(
         }
     }
 
-    /** Only reachable from a full board (see GameScreen), so this is always a real finish - never
-     *  called for a puzzle the player merely navigated away from. */
-    fun finish(onFinished: () -> Unit) {
+    /**
+     * Only reachable from a full board (see GameScreen). A correct board ends the game with a
+     * win (unless a wrong finish already logged a loss for it) and shows the solved view. A wrong
+     * board logs a loss right away - once per game - then highlights the mistakes and lets the
+     * player either fix them or leave.
+     */
+    fun finish() {
         val current = uiState.value as? GameUiState.Loaded ?: return
+        if (finishing || current.isSolved) return
+        finishing = true
         viewModelScope.launch {
-            statsRepository.recordResult(current.layoutId, current.difficulty, current.isCorrect)
+            try {
+                if (current.isCorrect) {
+                    _solvedSnapshot.value = current.copy(isSolved = true, selectedCell = null, showErrors = false)
+                    if (!current.attemptFailed) {
+                        statsRepository.recordResult(current.layoutId, current.difficulty, correct = true)
+                    }
+                    puzzleRepository.finishCurrent(puzzleId)
+                } else {
+                    if (!current.attemptFailed) {
+                        statsRepository.recordResult(current.layoutId, current.difficulty, correct = false)
+                        puzzleRepository.markAttemptFailed(puzzleId)
+                    }
+                    _showErrors.value = true
+                    _mistakeCount.value = current.wrongCells.size
+                }
+            } finally {
+                finishing = false
+            }
+        }
+    }
+
+    /** "Исправить": close the dialog, keep playing with the mistakes highlighted. */
+    fun keepFixing() {
+        _mistakeCount.value = null
+    }
+
+    /** "Выйти" after a wrong finish: the loss is already on record, so the game just ends. */
+    fun giveUp(onDone: () -> Unit) {
+        _mistakeCount.value = null
+        viewModelScope.launch {
             puzzleRepository.finishCurrent(puzzleId)
-            onFinished()
+            onDone()
         }
     }
 }

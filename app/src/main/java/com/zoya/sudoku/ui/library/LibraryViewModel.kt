@@ -6,6 +6,7 @@ import com.zoya.sudoku.data.repository.PuzzleRepository
 import com.zoya.sudoku.data.repository.RegionLayoutRepository
 import com.zoya.sudoku.data.repository.SavedLayout
 import com.zoya.sudoku.engine.Difficulty
+import com.zoya.sudoku.engine.PuzzleGenerationException
 import com.zoya.sudoku.ui.capitalizeFirst
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,15 +27,28 @@ class LibraryViewModel(
     private val _generatingLayoutId = MutableStateFlow<Long?>(null)
     val generatingLayoutId: StateFlow<Long?> = _generatingLayoutId
 
+    private val _generationFailed = MutableStateFlow(false)
+    val generationFailed: StateFlow<Boolean> = _generationFailed
+
+    fun dismissGenerationFailed() {
+        _generationFailed.value = false
+    }
+
     /** Difficulty is chosen right here, right before generation - never baked into the layout.
      *  Always starts a new puzzle, even if this layout already has one in progress. */
     fun play(layoutId: Long, difficulty: Difficulty, onReady: (Long) -> Unit) {
         if (_generatingLayoutId.value != null) return
         viewModelScope.launch {
             _generatingLayoutId.value = layoutId
-            val puzzleId = withContext(Dispatchers.Default) { puzzleRepository.generateAndStartNew(layoutId, difficulty) }
-            _generatingLayoutId.value = null
-            onReady(puzzleId)
+            val puzzleId = try {
+                withContext(Dispatchers.Default) { puzzleRepository.generateAndStartNew(layoutId, difficulty) }
+            } catch (e: PuzzleGenerationException) {
+                _generationFailed.value = true
+                null
+            } finally {
+                _generatingLayoutId.value = null
+            }
+            puzzleId?.let(onReady)
         }
     }
 

@@ -1,5 +1,6 @@
 package com.zoya.sudoku.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.Insert
@@ -28,7 +29,10 @@ data class PuzzleStateEntity(
     /** 81 comma-joined bitmasks, one per cell - bit (digit-1) set means that digit is pencilled in. */
     val notes: String,
     val difficulty: Difficulty,
-    val updatedAt: Long
+    val updatedAt: Long,
+    /** The player already tapped "Завершить" on a wrong board, so a loss is on record for this
+     *  game - fixing it afterwards must not log a second result. */
+    @ColumnInfo(defaultValue = "0") val attemptFailed: Boolean = false
 )
 
 @Dao
@@ -47,6 +51,9 @@ interface PuzzleStateDao {
 
     @Query("SELECT * FROM puzzle_state ORDER BY updatedAt DESC")
     fun observeAll(): Flow<List<PuzzleStateEntity>>
+
+    @Query("UPDATE puzzle_state SET attemptFailed = 1 WHERE id = :id")
+    suspend fun markAttemptFailed(id: Long)
 
     @Query("DELETE FROM puzzle_state WHERE id = :id")
     suspend fun delete(id: Long)

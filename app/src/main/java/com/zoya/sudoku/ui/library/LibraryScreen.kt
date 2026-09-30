@@ -37,6 +37,7 @@ import com.zoya.sudoku.data.repository.SavedLayout
 import com.zoya.sudoku.engine.Difficulty
 import com.zoya.sudoku.ui.capitalizeFirst
 import com.zoya.sudoku.ui.components.DifficultyDialog
+import com.zoya.sudoku.ui.components.GenerationFailedDialog
 import com.zoya.sudoku.ui.components.RegionThumbnail
 import com.zoya.sudoku.ui.components.ScreenHeader
 
@@ -44,6 +45,7 @@ import com.zoya.sudoku.ui.components.ScreenHeader
 fun LibraryScreen(viewModel: LibraryViewModel, onPlay: (Long) -> Unit, onHome: () -> Unit) {
     val layouts by viewModel.layouts.collectAsState()
     val generatingLayoutId by viewModel.generatingLayoutId.collectAsState()
+    val generationFailed by viewModel.generationFailed.collectAsState()
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
@@ -74,6 +76,10 @@ fun LibraryScreen(viewModel: LibraryViewModel, onPlay: (Long) -> Unit, onHome: (
                 }
             }
         }
+    }
+
+    if (generationFailed) {
+        GenerationFailedDialog(onDismiss = viewModel::dismissGenerationFailed)
     }
 }
 

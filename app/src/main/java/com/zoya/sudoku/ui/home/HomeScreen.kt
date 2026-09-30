@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.zoya.sudoku.data.repository.InProgressPuzzle
 import com.zoya.sudoku.ui.components.DifficultyDialog
+import com.zoya.sudoku.ui.components.GenerationFailedDialog
 import com.zoya.sudoku.ui.components.RegionThumbnail
 import com.zoya.sudoku.ui.displayName
 import com.zoya.sudoku.ui.formatUpdatedAt
@@ -50,6 +51,7 @@ fun HomeScreen(
 ) {
     val inProgress by viewModel.inProgress.collectAsState()
     val isStartingRandom by viewModel.isStartingRandom.collectAsState()
+    val generationFailed by viewModel.generationFailed.collectAsState()
     var showDifficultyDialog by remember { mutableStateOf(false) }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -135,6 +137,10 @@ fun HomeScreen(
                 viewModel.playRandom(difficulty, onPlay)
             }
         )
+    }
+
+    if (generationFailed) {
+        GenerationFailedDialog(onDismiss = viewModel::dismissGenerationFailed)
     }
 }
 

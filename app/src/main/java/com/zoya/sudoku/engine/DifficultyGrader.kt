@@ -10,11 +10,16 @@ data class Grade(
     val givenCount: Int
 )
 
+/** Result of a logic-only solve: the [grade] plus the board as far as logic got (full if solved). */
+class LogicSolveResult(val grade: Grade, val board: IntArray)
+
 /**
  * Simulates a human solving the puzzle using only [Technique]s, always applying the cheapest
- * applicable one first. Whatever it can't resolve this way is treated as "requires guessing" -
- * the actual uniqueness of the puzzle is already guaranteed by [PuzzleCarver], this grader only
- * measures how hard it is to get there without backtracking search.
+ * applicable one first. Whatever it can't resolve this way is treated as "requires guessing".
+ *
+ * Every technique here is a sound deduction (it only ever removes candidates that can't be in ANY
+ * solution), so when this solves a puzzle completely, that completion is the puzzle's only
+ * solution - [PuzzleCarver] relies on this to guarantee uniqueness AND human-solvability at once.
  *
  * Classic "pointing pairs" / "box-line reduction" assume a box spans exactly 3 rows x 3 columns,
  * which doesn't hold for arbitrary regions. [LOCKED_CANDIDATES] here is the shape-agnostic
@@ -23,7 +28,30 @@ data class Grade(
  */
 class DifficultyGrader(private val units: Units) {
 
-    fun gradePuzzle(givens: IntArray): Grade {
+    /**
+     * Unit pairs whose overlap has 2+ cells - the only ones [applyLockedCandidates] can learn
+     * anything from (a 1-cell overlap is just a hidden single, already tried first). Precomputed
+     * once because the carver grades the same layout dozens of times per puzzle.
+     */
+    private val lockedPairs: List<LockedPair> = buildList {
+        for (a in units.units) {
+            for (b in units.units) {
+                if (a === b) continue
+                val inA = BooleanArray(BOARD_SIZE).also { m -> a.forEach { m[it] = true } }
+                val inB = BooleanArray(BOARD_SIZE).also { m -> b.forEach { m[it] = true } }
+                val overlap = a.count { inB[it] }
+                if (overlap in 2 until GRID_DIM) add(LockedPair(a, b, inA, inB))
+            }
+        }
+    }
+
+    private class LockedPair(val a: IntArray, val b: IntArray, val inA: BooleanArray, val inB: BooleanArray)
+
+    fun gradePuzzle(givens: IntArray, maxAllowed: Technique = Technique.entries.last()): Grade =
+        solveLogically(givens, maxAllowed).grade
+
+    /** Like [gradePuzzle], but only ever uses techniques up to [maxAllowed] and returns the board too. */
+    fun solveLogically(givens: IntArray, maxAllowed: Technique = Technique.entries.last()): LogicSolveResult {
         val board = givens.copyOf()
         val candidates = buildCandidates(board)
         var maxTechnique: Technique? = null
@@ -31,20 +59,34 @@ class DifficultyGrader(private val units: Units) {
 
         while (true) {
             if (board.all { it != 0 }) {
-                return Grade(maxTechnique, requiresGuessing = false, solvedCompletely = true, givenCount = givenCount)
+                return LogicSolveResult(
+                    Grade(maxTechnique, requiresGuessing = false, solvedCompletely = true, givenCount = givenCount),
+                    board
+                )
             }
+            if (hasDeadCell(board, candidates)) break
             val applied = applyNakedSingle(board, candidates)
                 ?: applyHiddenSingle(board, candidates)
-                ?: applyLockedCandidates(board, candidates)
-                ?: applyNakedPair(board, candidates)
+                ?: (if (maxAllowed >= Technique.LOCKED_CANDIDATES) applyLockedCandidates(board, candidates) else null)
+                ?: (if (maxAllowed >= Technique.NAKED_PAIR) applyNakedPair(board, candidates) else null)
+                ?: break
 
-            if (applied == null) {
-                return Grade(maxTechnique, requiresGuessing = true, solvedCompletely = false, givenCount = givenCount)
-            }
             if (maxTechnique == null || applied.ordinal > maxTechnique.ordinal) {
                 maxTechnique = applied
             }
         }
+        return LogicSolveResult(
+            Grade(maxTechnique, requiresGuessing = true, solvedCompletely = false, givenCount = givenCount),
+            board
+        )
+    }
+
+    /** An empty cell with no candidates left means the givens contradict each other - stop there. */
+    private fun hasDeadCell(board: IntArray, candidates: IntArray): Boolean {
+        for (cell in 0 until BOARD_SIZE) {
+            if (board[cell] == 0 && candidates[cell] == 0) return true
+        }
+        return false
     }
 
     private fun buildCandidates(board: IntArray): IntArray {
@@ -107,38 +149,27 @@ class DifficultyGrader(private val units: Units) {
 
     private fun applyLockedCandidates(board: IntArray, candidates: IntArray): Technique? {
         var appliedAny = false
-        val allUnits = units.units
-        val inB = BooleanArray(BOARD_SIZE)
-        for (a in allUnits) {
-            for (b in allUnits) {
-                if (a === b) continue
-                for (cell in b) inB[cell] = true
-                val intersection = a.filter { inB[it] }
-                if (intersection.isNotEmpty()) {
-                    for (d in 1..9) {
-                        val bit = 1 shl (d - 1)
-                        var anyCandidateInA = false
-                        var allInIntersection = true
-                        for (cell in a) {
-                            if (board[cell] == 0 && candidates[cell] and bit != 0) {
-                                anyCandidateInA = true
-                                if (cell !in intersection) {
-                                    allInIntersection = false
-                                    break
-                                }
-                            }
-                        }
-                        if (anyCandidateInA && allInIntersection) {
-                            for (cell in b) {
-                                if (cell !in intersection && board[cell] == 0 && candidates[cell] and bit != 0) {
-                                    candidates[cell] = candidates[cell] and bit.inv()
-                                    appliedAny = true
-                                }
-                            }
+        for (pair in lockedPairs) {
+            for (d in 1..9) {
+                val bit = 1 shl (d - 1)
+                var anyCandidateInA = false
+                var allInIntersection = true
+                for (cell in pair.a) {
+                    if (board[cell] == 0 && candidates[cell] and bit != 0) {
+                        anyCandidateInA = true
+                        if (!pair.inB[cell]) {
+                            allInIntersection = false
+                            break
                         }
                     }
                 }
-                for (cell in b) inB[cell] = false
+                if (!anyCandidateInA || !allInIntersection) continue
+                for (cell in pair.b) {
+                    if (!pair.inA[cell] && board[cell] == 0 && candidates[cell] and bit != 0) {
+                        candidates[cell] = candidates[cell] and bit.inv()
+                        appliedAny = true
+                    }
+                }
             }
         }
         return if (appliedAny) Technique.LOCKED_CANDIDATES else null
